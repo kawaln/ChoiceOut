@@ -1,0 +1,116 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<style>
+
+body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    font-family:Arial;
+    background:#f5f5f5;
+    padding:40px;
+}
+
+h1{
+    margin-bottom:20px;
+}
+
+input{
+    width:400px;
+    max-width:90%;
+    padding:15px;
+    font-size:18px;
+    border-radius:50px;
+    border:2px solid #ccc;
+    outline:none;
+}
+
+.result{
+    margin-top:20px;
+    width:700px;
+    max-width:90%;
+}
+
+.place{
+    background:white;
+    margin-bottom:20px;
+    padding:20px;
+    border-radius:20px;
+    box-shadow:0 5px 20px rgba(0,0,0,0.1);
+}
+
+.place a{
+    color:#0077ff;
+    text-decoration:none;
+}
+
+.place a:hover{
+    text-decoration:underline;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>🍔 What do you want to eat?</h1>
+
+<input id="searchBar"
+placeholder="Try pizza, sushi, coffee...">
+
+<div class="result" id="result"></div>
+
+<script>
+
+const input = document.getElementById("searchBar");
+const result = document.getElementById("result");
+
+input.addEventListener("keydown", function(e){
+
+    if(e.key === "Enter"){
+
+        result.innerHTML = "Searching nearby places...";
+
+        navigator.geolocation.getCurrentPosition(function(pos){
+
+            fetch("/location", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    food: input.value
+                })
+
+            })
+            .then(r => r.text())
+            .then(data => {
+                result.innerHTML = data;
+            })
+            .catch(err => {
+                console.error(err);
+                result.innerHTML = "Error getting places";
+            });
+
+        });
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>

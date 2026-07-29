@@ -662,24 +662,15 @@ class Handler(BaseHTTPRequestHandler):
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 def main():
-    server = HTTPServer(("localhost", PORT), Handler)
-    log.info("Server running at http://localhost:%d  (Ctrl-C or ENTER to stop)", PORT)
+    # Render assigns a dynamic port via environment variables
+    port = int(os.environ.get("PORT", 8000))
 
-    def shutdown(sig, frame):
-        log.info("Shutting down…")
-        threading.Thread(target=server.shutdown, daemon=True).start()
-        sys.exit(0)
+    # Bind to "0.0.0.0" so Render's routing proxy can direct web traffic to your app
+    server = HTTPServer(("0.0.0.0", port), Handler)
+    log.info("Server running on port %d", port)
 
-    signal.signal(signal.SIGINT, shutdown)
-
-    threading.Thread(target=server.serve_forever, daemon=True).start()
-    webbrowser.open(f"http://localhost:{PORT}")
-
-    try:
-        input("Press ENTER to stop…\n")
-    finally:
-        log.info("Shutting down…")
-        server.shutdown()
+    # Blocks and keeps the server listening continuously in the cloud
+    server.serve_forever()
 
 
 if __name__ == "__main__":

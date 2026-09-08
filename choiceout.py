@@ -1121,12 +1121,22 @@ def run_server():
             "Run: export GOOGLE_MAPS_API_KEY=your_key_here"
         )
 
-    server_address = ("127.0.0.1", PORT)
-    httpd = ThreadingHTTPServer(server_address, RequestHandler)
-    log.info("Server listening on http://127.0.0.1:%d", PORT)
+    # Hosting platforms (Render, Railway, etc.) assign their own port via
+    # $PORT and require binding to 0.0.0.0, not 127.0.0.1 — a server bound
+    # to localhost only accepts connections from inside the same machine,
+    # which is unreachable from their router/load balancer.
+    port = int(os.environ.get("PORT", PORT))
+    is_deployed = bool(os.environ.get("RENDER") or os.environ.get("PORT"))
+    host = "0.0.0.0" if is_deployed else "127.0.0.1"
 
-    # Automatically open browser tab
-    threading.Thread(target=lambda: webbrowser.open(f"http://127.0.0.1:{PORT}"), daemon=True).start()
+    server_address = (host, port)
+    httpd = ThreadingHTTPServer(server_address, RequestHandler)
+    log.info("Server listening on http://%s:%d", host, port)
+
+    # Only auto-open a browser tab for local runs — there's no browser to
+    # open on a remote server, and no display to open it on even if there were.
+    if not is_deployed:
+        threading.Thread(target=lambda: webbrowser.open(f"http://127.0.0.1:{port}"), daemon=True).start()
 
     try:
         httpd.serve_forever()

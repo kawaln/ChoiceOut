@@ -495,6 +495,38 @@ HTML = """<!DOCTYPE html>
   .photo-card img { width: 100%; height: 110px; object-fit: cover; background: #333; }
   .author { font-size: 0.7rem; color: #aaa; padding: 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+  /* Recent Reviews */
+  .reviews-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .review-item {
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .review-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .review-author { font-size: 0.8rem; font-weight: 600; color: var(--text); }
+  .review-stars { color: #f39c12; font-size: 0.8rem; letter-spacing: 1px; }
+  .review-time { font-size: 0.75rem; color: var(--muted); margin-left: auto; }
+  .review-text {
+    font-size: 0.82rem;
+    color: #ccc;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
   /* Skeletons */
   .skeleton-card { display: flex; flex-direction: column; background: #1e1e1e; border-radius: 8px; overflow: hidden; border: 1px solid #2a2a2a; }
   .skeleton-img { width: 100%; height: 110px; background: #2a2a2a; position: relative; overflow: hidden; }
@@ -773,6 +805,7 @@ HTML = """<!DOCTYPE html>
             `<div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-text"></div></div>` +
             `<div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-text"></div></div>` +
           `</div>` +
+          `<div id="reviews-${i}" class="reviews-list"></div>` +
           `<div class="card-links">` +
             `<a class="btn btn-primary" href="${esc(p.maps)}" target="_blank" rel="noopener">🗺 Open in Maps</a>` +
             websiteHtml +
@@ -792,6 +825,7 @@ HTML = """<!DOCTYPE html>
     const infoEl    = document.getElementById(`place-info-${index}`);
     const hoursEl   = document.getElementById(`hours-${index}`);
     const galleryEl = document.getElementById(`gallery-${index}`);
+    const reviewsEl = document.getElementById(`reviews-${index}`);
 
     // Every place comes from the Google Text Search that built the list, so
     // its place_id is already known — go straight to getDetails.
@@ -800,12 +834,13 @@ HTML = """<!DOCTYPE html>
         // 'utc_offset_minutes' is required alongside 'opening_hours' for isOpen() to
         // correctly compute the place's status relative to its own local time —
         // without it isOpen() silently reads as closed even when actually open.
-        fields: ['name', 'formatted_address', 'opening_hours', 'utc_offset_minutes', 'rating', 'user_ratings_total', 'formatted_phone_number', 'business_status', 'photos']
+        fields: ['name', 'formatted_address', 'opening_hours', 'utc_offset_minutes', 'rating', 'user_ratings_total', 'formatted_phone_number', 'business_status', 'photos', 'reviews']
       }, (details, detailStatus) => {
         if (detailStatus !== google.maps.places.PlacesServiceStatus.OK || !details) {
           infoEl.innerHTML = `<span style="color:#888; font-size:0.8rem;">Details unavailable</span>`;
           hoursEl.innerHTML = "";
           galleryEl.innerHTML = "";
+          reviewsEl.innerHTML = "";
           return;
         }
 
@@ -871,29 +906,51 @@ HTML = """<!DOCTYPE html>
         // Photos
         if (!details.photos || details.photos.length === 0) {
           galleryEl.innerHTML = "";
-          return;
+        } else {
+          const userPhotos = details.photos.filter(p => p.html_attributions && p.html_attributions.length > 0);
+          const recentPhotos = (userPhotos.length > 0 ? userPhotos : details.photos).reverse().slice(0, 3);
+
+          galleryEl.innerHTML = recentPhotos.map(p => {
+            const imgUrl = p.getUrl({ maxWidth: 400, maxHeight: 400 });
+            let author = "Google Reviewer";
+
+            if (p.html_attributions && p.html_attributions.length > 0) {
+              const tempDiv = document.createElement("div");
+              tempDiv.innerHTML = p.html_attributions[0];
+              author = tempDiv.textContent || tempDiv.innerText || "Google Reviewer";
+            }
+
+            return `
+              <div class="photo-card">
+                <img src="${imgUrl}" alt="Google Review Photo">
+                <div class="author">By ${author}</div>
+              </div>
+            `;
+          }).join("");
         }
 
-        const userPhotos = details.photos.filter(p => p.html_attributions && p.html_attributions.length > 0);
-        const recentPhotos = (userPhotos.length > 0 ? userPhotos : details.photos).reverse().slice(0, 3);
+        // Reviews — sorted most-recent-first using each review's real
+        // `time` (a Unix timestamp), unlike photos which carry no date at all.
+        if (!details.reviews || details.reviews.length === 0) {
+          reviewsEl.innerHTML = "";
+        } else {
+          const oneYearAgo = Date.now() / 1000 - 365 * 24 * 60 * 60;
+          const recentReviews = details.reviews
+            .filter(r => r.time >= oneYearAgo)
+            .sort((a, b) => b.time - a.time)
+            .slice(0, 3);
 
-        galleryEl.innerHTML = recentPhotos.map(p => {
-          const imgUrl = p.getUrl({ maxWidth: 400, maxHeight: 400 });
-          let author = "Google Reviewer";
-
-          if (p.html_attributions && p.html_attributions.length > 0) {
-            const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = p.html_attributions[0];
-            author = tempDiv.textContent || tempDiv.innerText || "Google Reviewer";
-          }
-
-          return `
-            <div class="photo-card">
-              <img src="${imgUrl}" alt="Google Review Photo">
-              <div class="author">By ${author}</div>
+          reviewsEl.innerHTML = recentReviews.map(r => `
+            <div class="review-item">
+              <div class="review-top">
+                <span class="review-author">${esc(r.author_name)}</span>
+                <span class="review-stars">${renderStars(r.rating)}</span>
+                <span class="review-time">${esc(r.relative_time_description)}</span>
+              </div>
+              <p class="review-text">${esc(r.text)}</p>
             </div>
-          `;
-        }).join("");
+          `).join("");
+        }
       });
   }
 

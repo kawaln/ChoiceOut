@@ -797,11 +797,10 @@ HTML = """<!DOCTYPE html>
     // its place_id is already known — go straight to getDetails.
     service.getDetails({
         placeId: place.placeId,
-        // 'photos' temporarily removed from fields to stop burning Photo API calls
         // 'utc_offset_minutes' is required alongside 'opening_hours' for isOpen() to
         // correctly compute the place's status relative to its own local time —
         // without it isOpen() silently reads as closed even when actually open.
-        fields: ['name', 'formatted_address', 'opening_hours', 'utc_offset_minutes', 'rating', 'user_ratings_total', 'formatted_phone_number', 'business_status']
+        fields: ['name', 'formatted_address', 'opening_hours', 'utc_offset_minutes', 'rating', 'user_ratings_total', 'formatted_phone_number', 'business_status', 'photos']
       }, (details, detailStatus) => {
         if (detailStatus !== google.maps.places.PlacesServiceStatus.OK || !details) {
           infoEl.innerHTML = `<span style="color:#888; font-size:0.8rem;">Details unavailable</span>`;
@@ -869,9 +868,7 @@ HTML = """<!DOCTYPE html>
           hoursEl.innerHTML = "";
         }
 
-        // Photos temporarily disabled to stop burning Photo API calls
-        galleryEl.innerHTML = "";
-        /*
+        // Photos
         if (!details.photos || details.photos.length === 0) {
           galleryEl.innerHTML = "";
           return;
@@ -897,7 +894,6 @@ HTML = """<!DOCTYPE html>
             </div>
           `;
         }).join("");
-        */
       });
   }
 

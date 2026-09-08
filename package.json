@@ -1,0 +1,15 @@
+{
+  "name": "nearby-eats",
+  "version": "1.0.0",
+  "description": "Find nearby restaurants for any craving",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}
